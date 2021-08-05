@@ -1,0 +1,146 @@
+package gramatica;
+
+import java_cup.runtime.*;
+import gramatica.sym;
+import gramatica.lexer;
+import java_cup.runtime.XMLElement;
+import clasesDAO.*;
+import java.util.ArrayList;
+import java.util.List;
+
+parser code{:
+    //Listado de errores	
+	//Controlador de error sintactico
+    ArrayList<TokenError> listadoErroresSintacticos = new ArrayList();
+	int resultado = 0;
+
+	@Override
+	public void syntax_error(Symbol a){
+		Token tokenError = (Token) a.value;//lo transformamos en token para obtener su lexema, fila y columna		
+		String msgError = "Se esperaba: ";	
+		
+                
+		int linea = (tokenError != null) ? tokenError.getLinea() : 0;
+		int columna = (tokenError != null) ? tokenError.getColumna() : 0;
+		
+		if(a.sym == sym.EOF){
+			System.out.println("END OF FILE");
+			TokenError tokenErrorAux = new TokenError("ERROR SINTACTICO", "Cierre", "Termine con un numero", -1, -1);
+			listadoErroresSintacticos.add(tokenErrorAux);
+		}else{
+			for(int i = 0; i < expected_token_ids().size(); i++){
+				//msgError = msgError + mensajes[expected_token_ids().get(i)];
+				msgError = msgError + symbl_name_from_id(expected_token_ids().get(i)) + " ";
+
+				if(i < expected_token_ids().size() - 1)
+					msgError = msgError + ", ";			
+			}
+			//System.out.println("error de sintaxis: linea: "+tokenError.getLexema()+" "+tokenError.getLinea()+" columna: "+tokenError.getColumna()+" MENSAJE: "+msgError);
+			TokenError tokenErrorAux = new TokenError("ERROR SINTACTICO", tokenError.getLexema(), msgError, linea, columna);
+			listadoErroresSintacticos.add(tokenErrorAux);
+		}
+		
+	}
+
+	public int getResultado(){
+		return resultado;
+	}
+	
+	public void report_error(String message, Object info) {
+        System.out.println("Reportar Error");
+    }
+    
+	public void report_fatal_error(String message, Object info) {
+        System.out.println("Error Fatal: " + info);
+    }
+
+    protected int error_sync_size() {
+        return 1;
+    }
+	
+	public ArrayList<TokenError> getListadoErroresSintacticos(){
+		return listadoErroresSintacticos;
+	}
+
+	public parser(lexer lex){
+        super(lex);
+    }
+:}
+
+//SIMBOLOS
+terminal Token PAREN_INI;
+terminal Token PAREN_FIN;
+terminal Token SIGNO_POR;
+terminal Token SIGNO_MAS;
+
+//DATOS
+terminal Token NUMERO;
+
+//NO TERMINALES
+non terminal s;
+non terminal int e;
+non terminal int ep;
+non terminal int t;
+non terminal int tp;
+non terminal int f;
+
+
+//PRODUCCIONES INICIO
+start with s;
+
+s ::= e
+	;
+
+e ::=   t:n1
+        ep:n2 {: RESULT = n1 + n2; :}
+    | /* empty */ {: RESULT = 0; :}
+    ;
+
+ep ::=  SIGNO_MAS {: System.out.println(" + "); :}
+        t 
+        ep
+    | /* empty */
+    ;
+
+t  ::=   f 
+        tp
+    ;
+
+tp ::=  SIGNO_POR {: System.out.println(" * "); :}
+        f 
+        tp
+    | /* empty */
+    ;
+
+f ::= NUMERO:num {: System.out.println(" " + num.getLexema() + " "); RESULT = Integer.parseInteger(num.getLexema()); :}
+    |   PAREN_INI
+        e:ee {: RESULT = ee; :}
+        PAREN_FIN
+    ;
+
+/*
+E -> 	T
+	E'
+
+E'-> 	+
+	T
+	E'
+
+E'-> lambda
+
+T  -> 	F
+	T'
+
+T' -> 	*
+	F
+	T'
+
+T' -> lambda
+
+F -> ID
+
+F -> NUM		
+
+F -> ( E )
+
+*/
